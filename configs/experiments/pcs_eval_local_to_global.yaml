@@ -1,0 +1,90 @@
+evaluator_mode: local_to_global
+
+runtime:
+  seed: 1234
+
+output:
+  summary: true
+
+detector:
+  name: opencv_lsd
+  min_line_length: 20.0
+  params:
+    refine_mode: standard
+
+patching:
+  scales: [2, 3, 4]
+  overlap_ratio: 0.2
+  min_patch_size: 24
+
+regional:
+  min_lines_per_patch: 3
+  top_k_candidates: 3
+  orientation_histogram_bins: 12
+  patch_line_overlap_ratio: 0.35
+  min_intersection_line_angle_deg: 8.0
+  angular_inlier_threshold_deg: 7.5
+  intersection_dedup_radius_ratio: 0.03
+  min_candidate_inliers: 2
+  max_vp_distance_factor: 6.0
+  bootstrap_rounds: 12
+  bootstrap_sample_ratio: 0.75
+  bootstrap_match_radius_ratio: 0.04
+
+applicability:
+  min_num_lines: 12
+  target_num_lines: 40
+  min_mean_length: 20.0
+  target_mean_length: 60.0
+  long_line_length: 80.0
+  min_long_line_ratio: 0.15
+  target_long_line_ratio: 0.4
+  min_orientation_entropy: 0.35
+  target_orientation_entropy: 0.75
+  min_viable_patches: 3
+  target_viable_patches: 8
+  min_supported_patch_ratio: 0.2
+  target_supported_patch_ratio: 0.5
+  supported_patch_min_support: 0.35
+  confidence_threshold: 0.45
+  orientation_histogram_bins: 12
+
+scoring:
+  local_weight: 0.45
+  regional_weight: 0.55
+  local_line_count_weight: 0.25
+  local_mean_length_weight: 0.35
+  local_confidence_weight: 0.4
+  regional_support_weight: 0.45
+  regional_stability_weight: 0.25
+  regional_coverage_weight: 0.3
+  expected_num_lines: 60
+  expected_mean_length: 80.0
+
+consensus:
+  graph_mode: all_pairs
+  neighbor_margin_ratio: 0.15
+  min_patch_support_score: 0.25
+  min_patch_stability_score: 0.15
+  signature_orientation_bins: 12
+  compatibility_mode: generic_projective
+  direction_weight: 0.5
+  orientation_weight: 0.25
+  horizon_weight: 0.15
+  contradiction_weight: 0.1
+  directional_sigma_deg: 25.0
+  horizon_y_tolerance_ratio: 0.12
+  contradiction_angle_deg: 130.0
+  compatibility_threshold: 0.55
+  consensus_strategy: greedy_seed_grow
+  min_consensus_size: 2
+  target_supported_patches: 6
+  min_edge_score_for_growth: 0.5
+  error_soft_limit: 0.45
+  manhattan_assisted: false
+
+scoring_v2:
+  local_weight: 0.2
+  regional_weight: 0.25
+  global_weight: 0.4
+  coherence_weight: 0.15

@@ -1,0 +1,63 @@
+"""Geometry-facing types and helpers."""
+
+from pcs.geometry.lines import (
+    build_line_segment,
+    clip_segment_to_rect,
+    filter_short_segments,
+    line_angle_rad,
+    line_length,
+    segment_midpoint,
+    segment_overlap_ratio_with_rect,
+    segment_to_homogeneous,
+    smallest_undirected_angle_difference,
+)
+from pcs.geometry.camera import (
+    HorizonLine,
+    fit_weighted_horizontal_horizon,
+    horizon_line_from_y,
+    horizon_y_proxy_from_vp,
+    projective_angular_distance_deg,
+    vp_to_projective_direction,
+)
+from pcs.geometry.types import (
+    ApplicabilityResult,
+    GlobalCameraFitResult,
+    LineSegment,
+    LineSet,
+    LocalToGlobalPCSResult,
+    Patch,
+    PatchGeometricSignature,
+    PCSBaselineResult,
+    RegionalHypothesisMatch,
+    RegionalHypothesis,
+    VanishingPointCandidate,
+)
+
+__all__ = [
+    "ApplicabilityResult",
+    "GlobalCameraFitResult",
+    "HorizonLine",
+    "LineSegment",
+    "LineSet",
+    "LocalToGlobalPCSResult",
+    "Patch",
+    "PatchGeometricSignature",
+    "PCSBaselineResult",
+    "RegionalHypothesisMatch",
+    "RegionalHypothesis",
+    "VanishingPointCandidate",
+    "build_line_segment",
+    "clip_segment_to_rect",
+    "filter_short_segments",
+    "fit_weighted_horizontal_horizon",
+    "horizon_line_from_y",
+    "horizon_y_proxy_from_vp",
+    "projective_angular_distance_deg",
+    "line_angle_rad",
+    "line_length",
+    "segment_midpoint",
+    "segment_overlap_ratio_with_rect",
+    "segment_to_homogeneous",
+    "smallest_undirected_angle_difference",
+    "vp_to_projective_direction",
+]
