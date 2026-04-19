@@ -26,6 +26,9 @@ htmlcov/
 # Outputs (generated at runtime)
 outputs/
 
+# Data (large image datasets — download separately)
+data/
+
 # IDE / OS
 .vscode/
 .idea/

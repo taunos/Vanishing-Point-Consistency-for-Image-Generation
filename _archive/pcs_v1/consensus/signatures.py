@@ -38,6 +38,10 @@ def build_patch_signature(
     )
     horizon_y = horizon_y_proxy_from_vp(dominant_vp, image_center=image_center)
 
+    vp_candidates = tuple(
+        (c.x, c.y, c.score, c.num_inliers) for c in hypothesis.vp_candidates
+    )
+
     return PatchGeometricSignature(
         patch_id=hypothesis.patch.patch_id,
         dominant_vp=dominant_vp,
@@ -45,6 +49,7 @@ def build_patch_signature(
         stability_score=hypothesis.stability_score,
         orientation_histogram=orientation_histogram,
         normalized_direction=normalized_direction,
+        vp_candidates=vp_candidates,
         metadata={
             "patch_center_x": float(patch_center[0]),
             "patch_center_y": float(patch_center[1]),

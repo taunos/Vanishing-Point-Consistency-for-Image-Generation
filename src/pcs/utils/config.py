@@ -139,6 +139,11 @@ class ConsensusConfig:
     orientation_weight: float = 0.25
     horizon_weight: float = 0.15
     contradiction_weight: float = 0.1
+    vp_position_weight: float = 0.0
+    vp_position_sigma: float = 0.15
+    vp_direction_match_tolerance_deg: float = 15.0
+    vp_position_infinity_factor: float = 5.0
+    vp_position_no_match_default: float = 0.3
     directional_sigma_deg: float = 25.0
     horizon_y_tolerance_ratio: float = 0.12
     contradiction_angle_deg: float = 130.0
@@ -151,19 +156,36 @@ class ConsensusConfig:
     manhattan_assisted: bool = False
 
     def __post_init__(self) -> None:
-        (
-            self.direction_weight,
-            self.orientation_weight,
-            self.horizon_weight,
-            self.contradiction_weight,
-        ) = _normalize_weights(
+        if self.vp_position_weight > 0.0:
+            (
+                self.direction_weight,
+                self.vp_position_weight,
+                self.orientation_weight,
+                self.horizon_weight,
+                self.contradiction_weight,
+            ) = _normalize_weights(
+                (
+                    self.direction_weight,
+                    self.vp_position_weight,
+                    self.orientation_weight,
+                    self.horizon_weight,
+                    self.contradiction_weight,
+                )
+            )
+        else:
             (
                 self.direction_weight,
                 self.orientation_weight,
                 self.horizon_weight,
                 self.contradiction_weight,
+            ) = _normalize_weights(
+                (
+                    self.direction_weight,
+                    self.orientation_weight,
+                    self.horizon_weight,
+                    self.contradiction_weight,
+                )
             )
-        )
 
 
 @dataclass(slots=True)
@@ -172,21 +194,30 @@ class LocalToGlobalScoringConfig:
     regional_weight: float = 0.25
     global_weight: float = 0.4
     coherence_weight: float = 0.15
+    version: str = "v1"
 
     def __post_init__(self) -> None:
-        (
-            self.local_weight,
-            self.regional_weight,
-            self.global_weight,
-            self.coherence_weight,
-        ) = _normalize_weights(
+        if self.version in ("v2", "v3"):
+            # v2/v3: 3-component structure (coherence absorbed into global)
+            self.local_weight, self.regional_weight, self.global_weight = _normalize_weights(
+                (self.local_weight, self.regional_weight, self.global_weight)
+            )
+            self.coherence_weight = 0.0
+        else:
+            # v1 and v4: 4-component structure with explicit coherence weight
             (
                 self.local_weight,
                 self.regional_weight,
                 self.global_weight,
                 self.coherence_weight,
+            ) = _normalize_weights(
+                (
+                    self.local_weight,
+                    self.regional_weight,
+                    self.global_weight,
+                    self.coherence_weight,
+                )
             )
-        )
 
 
 @dataclass(slots=True)
@@ -200,7 +231,10 @@ class ExperimentConfig:
     applicability: ApplicabilityConfig = field(default_factory=ApplicabilityConfig)
     scoring: ScoringConfig = field(default_factory=ScoringConfig)
     consensus: ConsensusConfig = field(default_factory=ConsensusConfig)
+    consensus_v4: ConsensusConfig = field(default_factory=ConsensusConfig)
     scoring_v2: LocalToGlobalScoringConfig = field(default_factory=LocalToGlobalScoringConfig)
+    scoring_v3: LocalToGlobalScoringConfig = field(default_factory=LocalToGlobalScoringConfig)
+    scoring_v4: LocalToGlobalScoringConfig = field(default_factory=LocalToGlobalScoringConfig)
 
 
 def _load_raw_config(path: Path) -> dict[str, Any]:
@@ -231,7 +265,10 @@ def load_experiment_config(path: str | Path) -> ExperimentConfig:
         applicability=ApplicabilityConfig(**raw.get("applicability", {})),
         scoring=ScoringConfig(**raw.get("scoring", {})),
         consensus=ConsensusConfig(**raw.get("consensus", {})),
+        consensus_v4=ConsensusConfig(**raw.get("consensus_v4", raw.get("consensus", {}))),
         scoring_v2=LocalToGlobalScoringConfig(**raw.get("scoring_v2", {})),
+        scoring_v3=LocalToGlobalScoringConfig(**raw.get("scoring_v3", {})),
+        scoring_v4=LocalToGlobalScoringConfig(**raw.get("scoring_v4", {})),
     )
 
 

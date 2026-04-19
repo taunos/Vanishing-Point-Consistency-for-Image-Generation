@@ -93,6 +93,15 @@ def score_signature_pair(
         )
     contradiction_score = 1.0 - contradiction_penalty
 
+    if config.vp_position_weight > 0.0:
+        image_diagonal = math.hypot(image_width, image_height)
+        vp_position_score = compute_vp_position_divergence(
+            signature_a, signature_b, image_diagonal, config
+        )
+        component_scores.append((vp_position_score, config.vp_position_weight))
+        component_errors.append((1.0 - vp_position_score, config.vp_position_weight))
+        metadata["vp_position_score"] = float(vp_position_score)
+
     if config.manhattan_assisted and orientation_score is not None:
         dominant_bin_a = max(
             range(len(signature_a.orientation_histogram or [])),
@@ -121,6 +130,89 @@ def score_signature_pair(
     return (compatibility_score, geometric_error, metadata)
 
 
+def compute_vp_position_divergence(
+    sig_a: PatchGeometricSignature,
+    sig_b: PatchGeometricSignature,
+    image_diagonal: float,
+    config: ConsensusConfig,
+) -> float:
+    """Measure whether two patches imply compatible VP positions.
+
+    For each VP direction shared by both patches (within angular tolerance),
+    compares spatial VP positions. Returns a score in [0, 1] where 1.0 means
+    perfect agreement and 0.0 means maximal divergence.
+    """
+    cands_a = sig_a.vp_candidates
+    cands_b = sig_b.vp_candidates
+
+    if not cands_a or not cands_b:
+        return config.vp_position_no_match_default
+
+    img_cx = float(sig_a.metadata.get("image_center_x", 0.0))
+    img_cy = float(sig_a.metadata.get("image_center_y", 0.0))
+    tolerance_rad = math.radians(config.vp_direction_match_tolerance_deg)
+    infinity_threshold = config.vp_position_infinity_factor * max(image_diagonal, 1e-6)
+    sigma = max(config.vp_position_sigma, 1e-6)
+
+    def _is_infinity(x: float, y: float) -> bool:
+        return max(abs(x), abs(y)) > infinity_threshold
+
+    def _vp_angle(x: float, y: float) -> float:
+        return math.atan2(y - img_cy, x - img_cx) % math.pi
+
+    def _angle_diff(a1: float, a2: float) -> float:
+        d = abs(a1 - a2) % math.pi
+        return min(d, math.pi - d)
+
+    # Precompute B angles for efficiency
+    b_angles = [_vp_angle(x, y) for x, y, *_ in cands_b]
+
+    used_b: set[int] = set()
+    pair_scores: list[tuple[float, float]] = []
+
+    for x_a, y_a, score_a, _n_a in cands_a:
+        angle_a = _vp_angle(x_a, y_a)
+
+        # Find best unmatched B candidate by direction
+        best_b_idx: int | None = None
+        best_diff = float("inf")
+        for i_b, angle_b in enumerate(b_angles):
+            if i_b in used_b:
+                continue
+            diff = _angle_diff(angle_a, angle_b)
+            if diff < best_diff:
+                best_diff = diff
+                best_b_idx = i_b
+
+        if best_b_idx is None or best_diff > tolerance_rad:
+            continue
+
+        used_b.add(best_b_idx)
+        x_b, y_b, score_b, _n_b = cands_b[best_b_idx]
+
+        a_inf = _is_infinity(x_a, y_a)
+        b_inf = _is_infinity(x_b, y_b)
+
+        if a_inf and b_inf:
+            pos_score = 1.0
+        elif a_inf or b_inf:
+            pos_score = 0.0
+        else:
+            dist = math.hypot(x_a - x_b, y_a - y_b) / max(image_diagonal, 1e-6)
+            pos_score = math.exp(-dist / sigma)
+
+        weight = min(float(score_a), float(score_b))
+        pair_scores.append((pos_score, weight))
+
+    if not pair_scores:
+        return config.vp_position_no_match_default
+
+    total_weight = sum(w for _, w in pair_scores)
+    if total_weight <= 0.0:
+        return clamp01(sum(s for s, _ in pair_scores) / len(pair_scores))
+    return clamp01(sum(s * w for s, w in pair_scores) / total_weight)
+
+
 def _signature_for_candidate(
     base_signature: PatchGeometricSignature,
     candidate_vp: tuple[float, float],
@@ -140,6 +232,7 @@ def _signature_for_candidate(
         stability_score=base_signature.stability_score,
         orientation_histogram=base_signature.orientation_histogram,
         normalized_direction=_normalize_direction(patch_center, candidate_vp),
+        vp_candidates=base_signature.vp_candidates,
         metadata={
             **base_signature.metadata,
             "horizon_y_proxy": horizon_y_proxy_from_vp(candidate_vp, image_center=image_center),

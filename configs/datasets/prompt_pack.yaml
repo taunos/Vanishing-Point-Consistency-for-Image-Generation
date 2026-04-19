@@ -1,0 +1,32 @@
+prompt_categories:
+  strong_structure:
+    - "A long modern office corridor with fluorescent lights and glass doors on both sides, photorealistic"
+    - "Interior of a Gothic cathedral with tall columns and ribbed vaults, natural light from stained glass, photorealistic"
+    - "A narrow European cobblestone street lined with tall buildings converging to a single point, photorealistic"
+    - "A subway platform with parallel tracks and tiled walls stretching into the distance, photorealistic"
+    - "A modern apartment living room with hardwood floors, large windows, and clean geometric furniture, photorealistic"
+    - "A grand staircase in a classical building with ornate railings and checkered floor, photorealistic"
+    - "A university hallway with lockers on both sides and overhead fluorescent lighting, photorealistic"
+    - "An empty parking garage with concrete columns and painted floor lines, photorealistic"
+    - "A city avenue lined with identical apartment buildings converging at the horizon, photorealistic"
+    - "A modern library interior with long rows of bookshelves and receding ceiling lights, photorealistic"
+
+  medium_structure:
+    - "A cozy café interior with mismatched furniture and exposed brick walls, photorealistic"
+    - "A garden path winding between flower beds with a wooden pergola, photorealistic"
+    - "A kitchen interior with countertops, cabinets, and a tiled backsplash, photorealistic"
+    - "A hotel lobby with a reception desk, seating area, and decorative columns, photorealistic"
+    - "A small town street with shops and awnings, slight perspective, photorealistic"
+
+  weak_structure:
+    - "A dense forest with tall trees and dappled sunlight on the ground, photorealistic"
+    - "A close-up portrait of a tabby cat sitting on a windowsill, photorealistic"
+    - "A rocky beach at sunset with waves crashing on stones, photorealistic"
+    - "A wildflower meadow under a cloudy sky, photorealistic"
+    - "A macro photograph of dewdrops on a spider web, photorealistic"
+
+generation:
+  seeds: [42, 123]
+  resolution: 1024
+  guidance_scale: 7.5
+  num_inference_steps: 30

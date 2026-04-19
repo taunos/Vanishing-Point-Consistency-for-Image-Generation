@@ -49,6 +49,7 @@ def _summarize_consensus(
     image_width: int,
     image_height: int,
     config: ConsensusConfig,
+    total_supported_patches: int,
 ) -> GlobalCameraFitResult:
     node_by_patch_id = _node_lookup(graph)
     supported_signatures = [signatures[patch_id] for patch_id in sorted(consensus_patch_ids)]
@@ -89,6 +90,12 @@ def _summarize_consensus(
         image_center=image_center,
     )
 
+    mean_consensus_compatibility = (
+        sum(m.compatibility_score for m in compatible_matches) / len(compatible_matches)
+        if compatible_matches
+        else 0.0
+    )
+
     return GlobalCameraFitResult(
         success=len(consensus_patch_ids) >= config.min_consensus_size and bool(compatible_matches),
         score=global_score,
@@ -107,6 +114,8 @@ def _summarize_consensus(
                 [match.patch_id_a, match.patch_id_b] for match in compatible_matches
             ],
             "available_internal_edges": float(available_internal_edges),
+            "mean_consensus_compatibility": float(mean_consensus_compatibility),
+            "total_supported_patches": total_supported_patches,
             **horizon_metadata,
         },
     )
@@ -122,6 +131,8 @@ def fit_global_camera_consensus(
 ) -> GlobalCameraFitResult:
     """Fit an approximate global explanation by greedy seed-and-grow consensus."""
 
+    total_supported_patches = len(graph.nodes)
+
     if not graph.nodes:
         return GlobalCameraFitResult(
             success=False,
@@ -130,7 +141,10 @@ def fit_global_camera_consensus(
             num_consistent_matches=0,
             mean_error=1.0,
             fitted_horizon=None,
-            metadata={"reason": "no_supported_patches"},
+            metadata={
+                "reason": "no_supported_patches",
+                "total_supported_patches": 0,
+            },
         )
 
     matches_by_pair = _match_lookup(matches)
@@ -172,6 +186,7 @@ def fit_global_camera_consensus(
             image_width=image_width,
             image_height=image_height,
             config=config,
+            total_supported_patches=total_supported_patches,
         )
         if best_result is None or (
             result.score,

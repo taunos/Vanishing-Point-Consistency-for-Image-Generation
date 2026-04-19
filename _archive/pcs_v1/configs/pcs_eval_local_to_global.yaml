@@ -85,6 +85,52 @@ consensus:
 
 scoring_v2:
   local_weight: 0.2
+  regional_weight: 0.3
+  global_weight: 0.5
+  coherence_weight: 0.0
+  version: v2
+
+scoring_v3:
+  local_weight: 0.10
+  regional_weight: 0.10
+  global_weight: 0.80
+  coherence_weight: 0.0
+  version: v3
+
+# v4: Clean formula with VP-position-aware compatibility
+scoring_v4:
+  local_weight: 0.20
   regional_weight: 0.25
-  global_weight: 0.4
+  global_weight: 0.40
   coherence_weight: 0.15
+  version: v4
+
+consensus_v4:
+  graph_mode: all_pairs
+  neighbor_margin_ratio: 0.15
+  min_patch_support_score: 0.25
+  min_patch_stability_score: 0.15
+  signature_orientation_bins: 12
+  compatibility_mode: generic_projective
+  # vp_position_weight at 0.50 makes VP spatial agreement the dominant signal.
+  # sigma=0.10 is sensitive enough to detect VP shifts ≥10% of image diagonal
+  # while staying robust to typical VP estimation noise (~3% diagonal).
+  direction_weight: 0.20
+  orientation_weight: 0.10
+  horizon_weight: 0.10
+  contradiction_weight: 0.10
+  vp_position_weight: 0.50
+  vp_position_sigma: 0.10
+  vp_direction_match_tolerance_deg: 15.0
+  vp_position_infinity_factor: 5.0
+  vp_position_no_match_default: 0.3
+  directional_sigma_deg: 25.0
+  horizon_y_tolerance_ratio: 0.12
+  contradiction_angle_deg: 130.0
+  compatibility_threshold: 0.45
+  consensus_strategy: greedy_seed_grow
+  min_consensus_size: 2
+  target_supported_patches: 6
+  min_edge_score_for_growth: 0.4
+  error_soft_limit: 0.45
+  manhattan_assisted: false

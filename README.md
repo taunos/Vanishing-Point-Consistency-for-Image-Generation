@@ -1,42 +1,22 @@
-# projective-consistency
+# Projective Plausibility Score (PPS)
 
-`projective-consistency` is an evaluator-first research codebase for measuring projective consistency in geometry-rich images such as architecture, corridors, interiors, and urban scenes.
+A research codebase for measuring projective plausibility in AI-generated images using Perspective Fields consistency and analytic camera calibration divergence.
 
-The repository currently includes:
+**Core hypothesis:** Real photographs exhibit globally consistent perspective fields (all pixels agree on one camera). AI-generated images with projective errors show discontinuities, inconsistent gradients, or conflicting gravity directions.
 
-- a swappable line detector interface,
-- deterministic multi-scale overlapping patch generation,
-- a baseline regional vanishing-point hypothesis estimator,
-- a conservative analytic applicability gate,
-- a Milestone 1 baseline PCS scorer,
-- a Milestone 2 local-to-global consensus evaluator,
-- a CLI runner for single images or directories,
-- unit tests on synthetic geometry cases.
+## Key Results
 
-## What Milestone 2 Adds
+- **AUROC = 0.94** separating 102 real (York Urban DB) from 10 SDXL-generated architectural images
+- 5 metrics with p < 0.001: `pps_score`, `latitude_std`, `gradient_x_std`, `gradient_y_mean`, `patch_mean_range`
+- Best single feature: `gradient_x_std` (horizontal latitude gradient variance) — real photos have near-zero horizontal gradients; generated images break this constraint
 
-Milestone 2 adds an explicit evaluator-side local-to-global path under `src/pcs/consensus`:
+## Pipeline
 
-- deterministic region graph construction,
-- patch-level geometric signatures,
-- patch-pair compatibility scoring,
-- approximate global consensus fitting,
-- incompatibility estimation,
-- per-patch inconsistency diagnostics in saved JSON outputs,
-- a richer PCS v2 scorer that combines local quality, regional quality, global consensus, and contradiction penalty.
-
-The local-to-global evaluator asks a more structured question than the Milestone 1 baseline:
-
-> Do the regional geometric cues across the image admit a coherent shared projective explanation, or are strong local explanations mutually incompatible?
-
-## What This Repository Still Does Not Implement Yet
-
-This repository still does not implement the final paper method. In particular, it does not yet provide full camera calibration, the final cross-region projective model, learned confidence calibration, refinement/guidance loops, or training losses. The current local-to-global module is an interpretable evaluator-side approximation intended to be testable and replaceable.
-
-The regional estimator is also still a baseline, but it now uses deterministic
-intersection-component clustering plus resampling-based stability rather than a
-pure one-pass heuristic. That makes Milestone 2 less brittle while still
-leaving room for stronger future regional fitting.
+```
+Image -> Perspective Fields (PersNet-360Cities) -> Field Consistency Metrics
+      -> Line Detection (LSD) -> VP Estimation -> Focal Length Divergence
+      -> Combined PPS Score [0, 1]
+```
 
 ## Installation
 
@@ -44,86 +24,84 @@ leaving room for stronger future regional fitting.
 python -m pip install -e .
 python -m pip install -e .[dev]
 python -m pip install -e .[opencv]
+pip install git+https://github.com/jinlinyi/PerspectiveFields.git
 ```
 
-OpenCV is optional at install time, but the baseline detector adapter expects `opencv-python` if you want to run LSD detection.
+Requires PyTorch with CUDA support. Tested with PyTorch 2.12+ (nightly cu128) on RTX 5070 Ti.
 
-## Running The Evaluator
+## Usage
 
-Baseline mode:
+### Run evaluation
 
 ```bash
-python scripts/run_pcs_eval.py ^
-  --input path\to\image.png ^
-  --config configs\experiments\pcs_eval_baseline.yaml ^
-  --output-dir outputs\baseline_eval
+python scripts/run_pps_eval.py --config configs/experiments/pps_full_eval.yaml
 ```
 
-Local-to-global mode:
+Outputs: per-image metrics JSON, score histograms, ROC curves, box plots in `outputs/evaluation/`.
 
-```bash
-python scripts/run_pcs_eval.py ^
-  --input path\to\image_dir ^
-  --config configs\experiments\pcs_eval_local_to_global.yaml ^
-  --output-dir outputs\l2g_eval ^
-  --summary
+### Python API
+
+```python
+from pps.fields.perspective_wrapper import PerspectiveFieldsWrapper
+from pps.scoring.pps_score import compute_pps
+import numpy as np
+from PIL import Image
+
+wrapper = PerspectiveFieldsWrapper(device="cuda")
+image = np.array(Image.open("photo.jpg"))
+result = compute_pps(image, wrapper)
+print(f"PPS = {result.pps_score:.3f}")  # higher = more projectively plausible
 ```
 
-You can also override the mode from the CLI:
+## Data
 
-```bash
-python scripts/run_pcs_eval.py ^
-  --input path\to\image_dir ^
-  --config configs\experiments\pcs_eval_baseline.yaml ^
-  --output-dir outputs\override_eval ^
-  --mode local_to_global ^
-  --summary
+Image data is not included in this repository (gitignored). To reproduce results:
+
+- **Real images:** Download the [York Urban DB](http://www.elderlab.yorku.ca/resources/york-urban-line-segment-database-information/) and place in `data/real/york_urban/`
+- **Generated images:** Run `scripts/generate_images.py` or use your own SDXL/Flux/DALL-E generations in `data/generated/`
+
+## Package Layout
+
 ```
-
-Outputs include:
-
-- per-image JSON metrics,
-- aggregate CSV and JSON summaries,
-- a saved config snapshot,
-- deterministic run metadata including the configured seed,
-- richer consensus artifacts in local-to-global mode.
+src/
+  pps/                         # Projective Plausibility Score pipeline
+    fields/
+      perspective_wrapper.py   # PersNet + Paramnet model wrapper
+      field_consistency.py     # Latitude/up-vector consistency metrics
+    calibration/
+      focal_divergence.py      # Per-region focal length divergence
+    scoring/
+      pps_score.py             # Combined PPS metric
+    benchmark/
+      dataset.py               # Dataset loading (future)
+      evaluation.py            # Evaluation metrics (future)
+  pcs/                         # Preserved: line detectors + geometry
+    detectors/                 # LSD detector abstraction
+    geometry/                  # VP intersection, line helpers
+    utils/                     # Config, image utils
+scripts/
+  run_pps_eval.py              # Main evaluation script
+  generate_images.py           # SDXL image generation
+configs/
+  experiments/
+    pps_full_eval.yaml         # Evaluation config
+_archive/
+  pcs_v1/                      # Archived: original PCS pipeline (Milestones 1-2)
+```
 
 ## Testing
 
 ```bash
-pytest
+pytest tests/ -v
 ```
 
-## Package Layout
+20 unit tests covering the wrapper, field consistency, focal divergence, and PPS scoring.
 
-- `src/pcs/detectors`: detector abstraction and registry
-- `src/pcs/geometry`: typed geometry structures, horizon-line helpers, and coarse projective utilities
-- `src/pcs/regional`: patch generation and baseline VP hypotheses
-- `src/pcs/consensus`: cross-patch compatibility and global consensus modules
-- `src/pcs/applicability`: analytic applicability gate
-- `src/pcs/scoring`: baseline and local-to-global score composition
-- `src/pcs/io`: result serialization helpers
-- `src/pcs/utils`: config, image loading, seeds, and logging
+## References
 
-## Future Extension Points
+- Jin et al., "Perspective Fields for Single Image Camera Calibration," CVPR 2023 (Highlight)
+- Denis et al., "Efficient Edge-Based Methods for Estimating Manhattan Frames in Urban Imagery," ECCV 2008
 
-The architecture is designed so later milestones can add:
+## Status
 
-- alternative line detectors such as M-LSD or HAWP,
-- stronger multi-hypothesis regional fitting,
-- local-to-global camera consensus in `src/pcs/consensus`,
-- cross-region incompatibility terms in `src/pcs/consensus`,
-- refinement and editing modules.
-
-## Architectural Boundaries
-
-- `src/pcs/regional`: patch generation and patch-local geometric hypothesis estimation only.
-- `src/pcs/consensus`: cross-patch graph construction, pairwise compatibility scoring, global consensus fitting, and incompatibility estimation.
-- `src/pcs/scoring`: final score composition only.
-
-## Limitations
-
-- The current consensus module is evaluator-side and approximate rather than full physical camera estimation.
-- `geometry/camera.py` provides coarse horizon and projective-direction helpers, not a full calibrated camera model.
-- The strongest validity claim is still geometry-rich scenes with visible linear perspective evidence.
-- Low-evidence scenes should be interpreted through the applicability/confidence outputs rather than the PCS value alone.
+**Phase 1 complete.** Next: scale dataset to 50+ images per class across multiple generators (Phase 2).

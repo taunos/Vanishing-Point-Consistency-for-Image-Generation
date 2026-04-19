@@ -33,3 +33,8 @@ def create_detector(name: str, **kwargs: Any) -> LineDetector:
 
 from pcs.detectors import opencv_lsd as _opencv_lsd  # noqa: E402,F401
 
+try:
+    from pcs.detectors import hawp_detector as _hawp_detector  # noqa: E402,F401
+except Exception:  # pragma: no cover — optional dependency
+    pass
+

@@ -124,6 +124,7 @@ class PatchGeometricSignature:
     stability_score: float
     orientation_histogram: list[float] | None
     normalized_direction: tuple[float, float] | None
+    vp_candidates: tuple = field(default_factory=tuple)  # (x, y, score, num_inliers) per VP
     metadata: dict[str, Any] = field(default_factory=dict)
 
 

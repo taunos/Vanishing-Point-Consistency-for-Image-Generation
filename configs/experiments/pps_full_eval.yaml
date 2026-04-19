@@ -1,0 +1,28 @@
+# PPS Full Evaluation Config
+# Run with: python scripts/run_pps_eval.py --config configs/experiments/pps_full_eval.yaml
+
+data:
+  real_dirs:
+    - data/real/york_urban
+  generated_dirs:
+    - data/generated/sdxl
+  image_extensions: [".jpg", ".jpeg", ".png"]
+  max_images_per_dir: null  # null = use all
+
+model:
+  device: cuda
+  load_paramnet: false  # Paramnet has compatibility issues with current PyTorch nightly
+
+fields:
+  grid_size: 4
+
+focal:
+  enabled: true
+  grid_size: 2
+  min_lines_per_region: 8
+
+output:
+  dir: outputs/evaluation
+  save_visualizations: true
+  save_metrics_json: true
+  save_plots: true

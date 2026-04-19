@@ -1,0 +1,20 @@
+experiment:
+  name: phase3_separation
+  seed: 42
+
+data:
+  real_dir: data/real/
+  generated_dir: data/generated/
+
+scoring:
+  mode: local_to_global
+  config: configs/experiments/pcs_eval_local_to_global.yaml
+
+detectors:
+  - opencv_lsd
+  # - hawp  # uncomment when available
+
+output:
+  dir: outputs/phase3/
+  save_per_image: true
+  save_plots: true
